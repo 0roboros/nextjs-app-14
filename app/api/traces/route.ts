@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
-import { trace } from "@opentelemetry/api";
+
+// First, define possible attribute types
+interface TraceAttributes {
+  method?: string;
+  url?: string;
+  status?: number;
+  statusText?: string;
+  error?: string | Record<string, unknown>;
+  stack?: string;
+  [key: string]: unknown; // For any other potential attributes
+}
 
 interface TraceEvent {
   name: string;
   duration?: number;
-  attributes?: Record<string, any>;
+  attributes?: TraceAttributes;
   level?: string;
   environment: "client" | "server";
   timestamp: number;

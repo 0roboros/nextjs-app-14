@@ -22,6 +22,7 @@ export async function createClient() {
           try {
             cookieStore.set(name, value, options);
           } catch (error) {
+            console.log(error);
             // Handle cookie setting error in Server Component
           }
         },
@@ -29,6 +30,7 @@ export async function createClient() {
           try {
             cookieStore.set(name, "", { ...options, maxAge: 0 });
           } catch (error) {
+            console.log(error);
             // Handle cookie removal error in Server Component
           }
         },

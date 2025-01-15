@@ -3,13 +3,28 @@ import { Database } from "./database.types";
 
 type LogLevel = "info" | "warn" | "error" | "debug";
 
+// First define our interfaces
+interface LogDetails {
+  [key: string]: string | number | boolean | null | object | undefined;
+}
+
+interface LogError {
+  message?: string;
+  code?: string | number;
+  details?: Record<string, unknown>;
+  hint?: string;
+  stack?: string;
+  [key: string]: unknown; // Allow for additional error properties
+}
+
+// Update SupabaseLog to make details optional
 interface SupabaseLog {
   timestamp: number;
   level: LogLevel;
   operation: string;
-  details: any;
+  details?: LogDetails; // Make details optional
   duration?: number;
-  error?: any;
+  error?: LogError;
   environment: string;
 }
 
@@ -46,7 +61,7 @@ class SupabaseLogger {
       message += ` (${log.duration.toFixed(2)}ms)`;
     }
 
-    if (log.details) {
+    if (log.details) { // Check if details exists
       message += "\n  Details:";
       const details = this.sanitizeLogDetails(log.details);
       Object.entries(details).forEach(([key, value]) => {
@@ -78,12 +93,12 @@ class SupabaseLogger {
     return message;
   }
 
-  private sanitizeLogDetails(details: any): any {
+  private sanitizeLogDetails(details: LogDetails): LogDetails {
     if (typeof details !== "object" || details === null) {
       return details;
     }
 
-    const sanitized: any = {};
+    const sanitized: LogDetails = {};
     for (const [key, value] of Object.entries(details)) {
       // Skip internal properties and empty values
       if (!key.startsWith("_") && value !== undefined && value !== null) {
@@ -105,7 +120,7 @@ class SupabaseLogger {
     return sanitized;
   }
 
-  private formatValue(value: any): string {
+  private formatValue(value: LogDetails[keyof LogDetails]): string {
     if (typeof value === "object" && value !== null) {
       if (Array.isArray(value)) {
         return `[${value.map((v) => this.formatValue(v)).join(", ")}]`;
@@ -118,17 +133,17 @@ class SupabaseLogger {
   log(
     level: LogLevel,
     operation: string,
-    details?: any,
-    error?: any,
+    details?: LogDetails,
+    error?: unknown,
     duration?: number
   ) {
     const log: SupabaseLog = {
       timestamp: Date.now(),
       level,
       operation,
-      details,
-      error,
-      duration,
+      details: details || undefined,
+      error: error ? this.formatError(error) : undefined,
+      duration: duration || undefined,
       environment: process.env.NODE_ENV || "development",
     };
 
@@ -214,6 +229,25 @@ class SupabaseLogger {
         return value;
       },
     });
+  }
+
+  // Add a helper method to format the error
+  private formatError(error: unknown): LogError {
+    if (error instanceof Error) {
+      return {
+        message: error.message,
+        stack: error.stack,
+        ...Object.fromEntries(Object.entries(error as unknown as Record<string, unknown>))
+      };
+    }
+
+    if (typeof error === 'object' && error !== null) {
+      return error as LogError;
+    }
+
+    return {
+      message: String(error)
+    };
   }
 }
 
